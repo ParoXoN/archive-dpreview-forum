@@ -31,19 +31,25 @@ def threaded(func):
 def scrape(thread_url):
     next = None
     output_filename = thread_url.replace("https://www.dpreview.com/forums/thread/", "").replace("?page=", "_") + ".html"
+    output_filename = os.path.join("./archive/",output_filename)
     if os.path.exists(output_filename):
         # already scraped
         print("%s" % (thread_url), "already scraped")
         return None
+    sleepCount=0
     while True:
+        sleepCount+=1
         os.system('wget "%s" -q --retry-connrefused --waitretry=1 --read-timeout=2 --timeout=2 -t 1 --content-on-error --user-agent="Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0" --warc-file="%s" -O %s' % (thread_url, output_filename.replace("html", "warc"), output_filename))
         r = open(output_filename).read()
         if not "We can't connect to the server for this app or website at this time. There might be too much traffic or a configuration error." in r and ('title="dpreview.com: Digital Photograhy Review"' in r or "It looks like you're trying to visit a page that doesn't exist" in r):
             break # getting r was a success
         print("FATAL ERROR! BLOCK DETECTED! WAITING TO PROCESS", r)
-        time.sleep(20)
+        print("\tWaiting {} seconds".format(sleepCount*20))
+        time.sleep(20*sleepCount)
+        sleepCount+=1
         # try again
     if '<link rel="next"' in r:
+        sleepCount=0
         next = r.split('<link rel="next" href="')[1].split('"')[0]
         next = next.strip()
     return next
@@ -57,7 +63,8 @@ def process(thread_id):
     lock.acquire()
     processed += 1
     lock.release()
-    print(thread_id, "processed", processed, "of", TOTAL, 100 * float(processed) / TOTAL, "% in", time.time() - GLOBAL_START, "seconds", "chunkfile", sys.argv[1])
+#    print(thread_id, "processed", processed, "of", TOTAL, 100 * float(processed) / TOTAL, "% in", time.time() - GLOBAL_START, "seconds", "chunkfile", sys.argv[1])
+    print("ThreadId: {} processed {} of {} ({:.02f})% in {:.03f} seconds. Chunkfile: '{}'".format(thread_id,processed,TOTAL,100.0*processed/TOTAL,(time.time()-GLOBAL_START),sys.argv[1]))
 
 def initialize(start):
     curr = start
@@ -82,6 +89,8 @@ try:
 except:
     print("Usage: python scrape.py [file], file has one thread ID per line to scrape")
 
+if not os.path.exists("./archive"):
+    os.mkdirs("./archive")
 to_process = open(chunkfile).read().splitlines()
 TOTAL = len(to_process)
 # assign jobs to threads
