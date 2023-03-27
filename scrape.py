@@ -15,6 +15,8 @@ NUM_WORKERS = 10
 
 GLOBAL_START = time.time()
 
+outputdir="./archive"
+
 # thread decorator stolen from https://gist.githubusercontent.com/raviolliii/94e9e16ef74f3c4f0886c6eb1fdfa157/raw/b32018243349061aac2776b25c957045ea298d07/thread_decorator.py
 def threaded(func):
     """
@@ -29,9 +31,10 @@ def threaded(func):
     return wrapper
 
 def scrape(thread_url):
+    global outputdir
     next = None
     output_filename = thread_url.replace("https://www.dpreview.com/forums/thread/", "").replace("?page=", "_") + ".html"
-    output_filename = os.path.join("./archive/",output_filename)
+    output_filename = os.path.join(outputdir,output_filename)
     if os.path.exists(output_filename):
         # already scraped
         print("%s" % (thread_url), "already scraped")
@@ -87,10 +90,14 @@ def work(thread_ids, worker_id):
 try:
     chunkfile = sys.argv[1]
 except:
-    print("Usage: python scrape.py [file], file has one thread ID per line to scrape")
+    print("Usage: python scrape.py [file] [outputdir], file has one thread ID per line to scrape")
 
-if not os.path.exists("./archive"):
-    os.mkdirs("./archive")
+if len(sys.argv)>2:
+    outputdir=sys.argv[2]
+
+if not os.path.exists(outputdir):
+    os.makedirs(outputdir)
+print(outputdir)
 to_process = open(chunkfile).read().splitlines()
 TOTAL = len(to_process)
 # assign jobs to threads
